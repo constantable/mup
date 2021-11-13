@@ -1,16 +1,46 @@
 security:
+    encoders:
+        App\Entity\User:
+            algorithm: auto
+
     # https://symfony.com/doc/current/security.html#where-do-users-come-from-user-providers
     providers:
-        users_in_memory: { memory: null }
+        # used to reload user from session & other features (e.g. switch_user)
+        app_user_provider:
+            entity:
+                class: App\Entity\User
+                property: email
+        ldap_user_provider:
+            ldap:
+                service: Symfony\Component\Ldap\Ldap
+                base_dn: dc=example,dc=org
+                search_dn: "cn=admin,dc=example,dc=org"
+                search_password: adminpassword
+                default_roles: ROLE_USER
+                uid_key: uid
+        chain_user_provider:
+            chain:
+                providers: [ 'ldap_user_provider', 'app_user_provider' ]
     firewalls:
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
         main:
-            anonymous: true
             lazy: true
-            provider: users_in_memory
-
+            anonymous: true
+            provider: chain_user_provider
+            form_login_ldap:
+                login_path: login_ldap
+                check_path: login_ldap
+                service: Symfony\Component\Ldap\Ldap
+                search_password: adminpassword
+                search_dn: "cn=admin,dc=example,dc=org"
+                dn_string: 'cn={username},ou=users,dc=example,dc=org'
+            form_login:
+                login_path: login
+                check_path: login
+            logout:
+                path: app_logout
             # activate different ways to authenticate
             # https://symfony.com/doc/current/security.html#firewalls-authentication
 
